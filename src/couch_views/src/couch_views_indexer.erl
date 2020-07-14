@@ -90,6 +90,7 @@ init() ->
         job => Job,
         job_data => Data,
         count => 0,
+        changes_done => 0,
         limiter => Limiter,
         doc_acc => [],
         design_opts => Mrst#mrst.design_opts
@@ -191,7 +192,8 @@ do_update(Db, Mrst0, State0) ->
             last_seq := LastSeq,
             limit := Limit,
             limiter := Limiter,
-            view_vs := ViewVS
+            view_vs := ViewVS,
+            changes_done := ChangesDone0
         } = State2,
         DocAcc1 = fetch_docs(TxDb, DocAcc),
         couch_rate:in(Limiter, Count),
@@ -199,13 +201,16 @@ do_update(Db, Mrst0, State0) ->
         {Mrst1, MappedDocs} = map_docs(Mrst0, DocAcc1),
         WrittenDocs = write_docs(TxDb, Mrst1, MappedDocs, State2),
 
+        ChangesDone = ChangesDone0 + WrittenDocs,
+
         couch_rate:success(Limiter, WrittenDocs),
 
         case Count < Limit of
             true ->
                 maybe_set_build_status(TxDb, Mrst1, ViewVS,
                     ?INDEX_READY),
-                report_progress(State2, finished),
+                report_progress(State2#{changes_done := ChangesDone},
+                    finished),
                 {Mrst1, finished};
             false ->
                 State3 = report_progress(State2, update),
@@ -213,6 +218,7 @@ do_update(Db, Mrst0, State0) ->
                     tx_db := undefined,
                     count := 0,
                     doc_acc := [],
+                    changes_done := ChangesDone,
                     view_seq := LastSeq
                 }}
         end
@@ -483,7 +489,8 @@ report_progress(State, UpdateType) ->
         tx_db := TxDb,
         job := Job1,
         job_data := JobData,
-        last_seq := LastSeq
+        last_seq := LastSeq,
+        changes_done := ChangesDone0
     } = State,
 
     #{
@@ -491,8 +498,10 @@ report_progress(State, UpdateType) ->
         <<"db_uuid">> := DbUUID,
         <<"ddoc_id">> := DDocId,
         <<"sig">> := Sig,
-        <<"retries">> := Retries
+        <<"retries">> := Retries,
+        <<"changes_done">> := ChangesDone1
     } = JobData,
+
 
     % Reconstruct from scratch to remove any
     % possible existing error state.
@@ -502,7 +511,8 @@ report_progress(State, UpdateType) ->
         <<"ddoc_id">> => DDocId,
         <<"sig">> => Sig,
         <<"view_seq">> => LastSeq,
-        <<"retries">> => Retries
+        <<"retries">> => Retries,
+        <<"changes_done">> => ChangesDone0 + ChangesDone1
     },
 
     case UpdateType of

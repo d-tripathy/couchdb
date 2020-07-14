@@ -29,6 +29,7 @@
 
 start_link() ->
     ok = register_views_index(),
+    ok = fabric2_active_tasks:register_tasks(couch_views_active_tasks),
     Arg = case fabric2_node_types:is_type(view_indexing) of
         true -> normal;
         false -> builds_disabled

@@ -83,7 +83,8 @@ trace_single_doc(Db) ->
         <<"db_uuid">> => fabric2_db:get_uuid(Db),
         <<"ddoc_id">> => <<"_design/bar">>,
         <<"sig">> => HexSig,
-        <<"retries">> => 0
+        <<"retries">> => 0,
+        <<"active_tasks_info">> => #{}
     },
     meck:expect(couch_jobs, accept, 2, {ok, job, JobData}),
     meck:expect(couch_jobs, update, 3, {ok, job}),
