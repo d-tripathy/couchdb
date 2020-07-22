@@ -151,7 +151,7 @@ job_data(Db, Mrst) ->
         ddoc_id => DDocId,
         sig => fabric2_util:to_hex(Sig),
         retries => 0,
-        changes_done => 0
+        active_tasks_info => #{}
     }.
 
 

@@ -33,7 +33,6 @@
 
     get_activity_vs/2,
     get_activity_vs_and_watch/2,
-    get_active_jobs/1,
     get_active_since/3,
     get_inactive_since/3,
     re_enqueue_inactive/3,
@@ -354,13 +353,6 @@ get_activity_vs_and_watch(#{jtx := true} = JTx, Type) ->
             {VS} = erlfdb_tuple:unpack(Val),
             {VS, Watch}
     end.
-
-
-get_active_jobs(Type) ->
-    fabric2_fdb:transactional(fun(Tx) ->
-        JTx = init_jtx(Tx),                                                        
-        get_active_since(JTx, Type, {versionstamp, 0, 0})
-    end).
 
 
 get_active_since(#{jtx := true} = JTx, Type, Versionstamp) ->

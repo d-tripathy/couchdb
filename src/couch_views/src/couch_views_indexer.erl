@@ -490,7 +490,8 @@ report_progress(State, UpdateType) ->
         job := Job1,
         job_data := JobData,
         last_seq := LastSeq,
-        changes_done := ChangesDone0
+        db_seq := DBSeq,
+        changes_done := ChangesDone
     } = State,
 
     #{
@@ -499,9 +500,16 @@ report_progress(State, UpdateType) ->
         <<"ddoc_id">> := DDocId,
         <<"sig">> := Sig,
         <<"retries">> := Retries,
-        <<"changes_done">> := ChangesDone1
+        <<"active_tasks_info">> := ActiveTasks
     } = JobData,
 
+    TotalDone = case maps:get(<<"changes_done">>, ActiveTasks, 0) of
+        0 -> ChangesDone;
+        N -> N + ChangesDone
+    end,
+
+    NewActiveTasks = active_tasks_info(TotalDone, DbName, DDocId,
+        LastSeq, DBSeq),
 
     % Reconstruct from scratch to remove any
     % possible existing error state.
@@ -512,7 +520,7 @@ report_progress(State, UpdateType) ->
         <<"sig">> => Sig,
         <<"view_seq">> => LastSeq,
         <<"retries">> => Retries,
-        <<"changes_done">> => ChangesDone0 + ChangesDone1
+        <<"active_tasks_info">> => NewActiveTasks
     },
 
     case UpdateType of
@@ -551,3 +559,27 @@ key_size_limit() ->
 
 value_size_limit() ->
     config:get_integer("couch_views", "value_size_limit", ?VALUE_SIZE_LIMIT).
+
+
+active_tasks_info(ChangesDone, DbName, DDocId, LastSeq, DBSeq) ->
+    {[
+        {<<"type">>, <<"indexer">>},
+        {<<"database">>, DbName},
+        {<<"changes_done">>, ChangesDone},
+        {<<"design_document">>, DDocId},
+        {<<"current_version_stamp">>, convert_seq_to_stamp(LastSeq)},
+        {<<"db_version_stamp">>, convert_seq_to_stamp(DBSeq)}
+    ]}.
+
+
+convert_seq_to_stamp(<<"0">>) ->
+    <<"0-0-0">>;
+
+convert_seq_to_stamp(undefined) ->
+    <<"0-0-0">>;
+
+convert_seq_to_stamp(Seq) ->
+    {_, Stamp, Batch, DocNumber} = fabric2_fdb:seq_to_vs(Seq),
+    VS = integer_to_list(Stamp) ++ "-" ++ integer_to_list(Batch)
+        ++ "-" ++ integer_to_list(DocNumber),
+    list_to_binary(VS).
