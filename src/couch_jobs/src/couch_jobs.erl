@@ -19,6 +19,7 @@
     remove/3,
     get_job_data/3,
     get_job_state/3,
+    get_active_jobs/2,
 
     % Job processing
     accept/1,
@@ -101,6 +102,12 @@ get_job_state(Tx, Type, JobId) when is_binary(JobId) ->
             {error, Error} ->
                 {error, Error}
         end
+    end).
+
+
+get_active_jobs(Tx, Type) ->
+    couch_jobs_fdb:tx(couch_jobs_fdb:get_jtx(Tx), fun(JTx) ->
+        couch_jobs_fdb:get_active_since(JTx, Type, {versionstamp, 0, 0})
     end).
 
 
