@@ -508,8 +508,8 @@ report_progress(State, UpdateType) ->
         N -> N + ChangesDone
     end,
 
-    NewActiveTasks = active_tasks_info(TotalDone, DbName, DDocId,
-        LastSeq, DBSeq),
+    NewActiveTasks = couch_views_util:active_tasks_info(TotalDone,
+        DbName, DDocId, LastSeq, DBSeq),
 
     % Reconstruct from scratch to remove any
     % possible existing error state.
@@ -560,26 +560,3 @@ key_size_limit() ->
 value_size_limit() ->
     config:get_integer("couch_views", "value_size_limit", ?VALUE_SIZE_LIMIT).
 
-
-active_tasks_info(ChangesDone, DbName, DDocId, LastSeq, DBSeq) ->
-    {[
-        {<<"type">>, <<"indexer">>},
-        {<<"database">>, DbName},
-        {<<"changes_done">>, ChangesDone},
-        {<<"design_document">>, DDocId},
-        {<<"current_version_stamp">>, convert_seq_to_stamp(LastSeq)},
-        {<<"db_version_stamp">>, convert_seq_to_stamp(DBSeq)}
-    ]}.
-
-
-convert_seq_to_stamp(<<"0">>) ->
-    <<"0-0-0">>;
-
-convert_seq_to_stamp(undefined) ->
-    <<"0-0-0">>;
-
-convert_seq_to_stamp(Seq) ->
-    {_, Stamp, Batch, DocNumber} = fabric2_fdb:seq_to_vs(Seq),
-    VS = integer_to_list(Stamp) ++ "-" ++ integer_to_list(Batch)
-        ++ "-" ++ integer_to_list(DocNumber),
-    list_to_binary(VS).
