@@ -15,7 +15,6 @@
 
 -include_lib("couch/include/couch_eunit.hrl").
 -include_lib("couch/include/couch_db.hrl").
--include_lib("couch_mrview/include/couch_mrview.hrl").
 -include_lib("couch_views/include/couch_views.hrl").
 -include_lib("fabric/test/fabric2_test.hrl").
 
@@ -75,8 +74,13 @@ active_tasks_test_() ->
 verify_basic_active_tasks({Db, DDoc}) ->
     pause_indexer_for_changes(self()),
     couch_views:build_indices(Db, [DDoc]),
-    {Pid, {changes_done, ChangesDone}} = wait_to_reach_changes(10000),
-    Pid ! continue,
+    {IndexerPid, {changes_done, ChangesDone}} = wait_to_reach_changes(10000),
+    [ActiveTask] = fabric2_active_tasks:get_active_tasks(),
+    ChangesDone1 = maps:get(<<"changes_done">>, ActiveTask),
+    IndexerPid ! continue,
+    % we assume the indexer has run for a bit so it has to > 0
+    ?assert(ChangesDone1 > 0),
+    ?assert(ChangesDone1 =< ChangesDone),
     ?assertEqual(ChangesDone, ?TOTAL_DOCS).
 
 
