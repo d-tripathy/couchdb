@@ -150,8 +150,7 @@ job_data(Db, Mrst) ->
         db_uuid => fabric2_db:get_uuid(Db),
         ddoc_id => DDocId,
         sig => fabric2_util:to_hex(Sig),
-        retries => 0,
-        active_tasks_info => #{}
+        retries => 0
     }.
 
 

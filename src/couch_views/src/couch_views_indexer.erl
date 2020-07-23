@@ -133,7 +133,9 @@ upgrade_data(Data) ->
             true -> Acc;
             false -> maps:put(Key, Default, Acc)
         end
-    end, Data, Defaults).
+    end, Data, Defaults),
+    % initialize active task
+    fabric2_active_tasks:update_active_task_info(Data, #{}).
 
 
 % Transaction limit exceeded don't retry
@@ -499,10 +501,10 @@ report_progress(State, UpdateType) ->
         <<"db_uuid">> := DbUUID,
         <<"ddoc_id">> := DDocId,
         <<"sig">> := Sig,
-        <<"retries">> := Retries,
-        <<"active_tasks_info">> := ActiveTasks
+        <<"retries">> := Retries
     } = JobData,
 
+    ActiveTasks = fabric2_active_tasks:get_active_task_info(JobData),
     TotalDone = case maps:get(<<"changes_done">>, ActiveTasks, 0) of
         0 -> ChangesDone;
         N -> N + ChangesDone
@@ -513,15 +515,16 @@ report_progress(State, UpdateType) ->
 
     % Reconstruct from scratch to remove any
     % possible existing error state.
-    NewData = #{
+    NewData0 = #{
         <<"db_name">> => DbName,
         <<"db_uuid">> => DbUUID,
         <<"ddoc_id">> => DDocId,
         <<"sig">> => Sig,
         <<"view_seq">> => LastSeq,
-        <<"retries">> => Retries,
-        <<"active_tasks_info">> => NewActiveTasks
+        <<"retries">> => Retries
     },
+    NewData = fabric2_active_tasks:update_active_task_info(NewData0,
+        NewActiveTasks),
 
     case UpdateType of
         update ->
