@@ -105,6 +105,8 @@ get_job_state(Tx, Type, JobId) when is_binary(JobId) ->
     end).
 
 
+-spec get_active_jobs(jtx(), job_type()) -> {ok, job_data()} | {error,
+    any()}.
 get_active_jobs(Tx, Type) ->
     couch_jobs_fdb:tx(couch_jobs_fdb:get_jtx(Tx), fun(JTx) ->
         couch_jobs_fdb:get_active_since(JTx, Type, {versionstamp, 0, 0})
