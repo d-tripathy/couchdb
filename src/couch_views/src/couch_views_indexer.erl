@@ -562,4 +562,3 @@ key_size_limit() ->
 
 value_size_limit() ->
     config:get_integer("couch_views", "value_size_limit", ?VALUE_SIZE_LIMIT).
-

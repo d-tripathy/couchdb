@@ -118,7 +118,7 @@ get_active_jobs_ids(Tx, Type) ->
 
 -spec get_types(jtx()) -> [job_type()] | {error, any()}.
 get_types(Tx) ->
-     couch_jobs_fdb:tx(couch_jobs_fdb:get_jtx(Tx), fun(JTx) ->
+    couch_jobs_fdb:tx(couch_jobs_fdb:get_jtx(Tx), fun(JTx) ->
         couch_jobs_fdb:get_types(JTx)
     end).
 
