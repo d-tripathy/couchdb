@@ -20,6 +20,9 @@
 
 
 -define(MAP_FUN1, <<"map_fun1">>).
+-define(MAP_FUN2, <<"map_fun2">>).
+-define(INDEX_FOO, <<"_design/foo">>).
+-define(INDEX_BAR, <<"_design/bar">>).
 -define(TOTAL_DOCS, 1000).
 
 
@@ -40,7 +43,7 @@ cleanup(Ctx) ->
 foreach_setup() ->
     {ok, Db} = fabric2_db:create(?tempdb(), [{user_ctx, ?ADMIN_USER}]),
     
-    DDoc = create_ddoc(),
+    DDoc = create_ddoc(?INDEX_FOO, ?MAP_FUN1),
     Docs = make_docs(?TOTAL_DOCS),
     fabric2_db:update_docs(Db, [DDoc | Docs]),
 
@@ -64,7 +67,8 @@ active_tasks_test_() ->
                 fun foreach_setup/0,
                 fun foreach_teardown/1,
                 [
-                    ?TDEF_FE(verify_basic_active_tasks)
+                    ?TDEF_FE(verify_basic_active_tasks),
+                    ?TDEF_FE(verify_muliple_active_tasks)
                 ]
             }
         }
@@ -84,11 +88,31 @@ verify_basic_active_tasks({Db, DDoc}) ->
     ?assertEqual(ChangesDone, ?TOTAL_DOCS).
 
 
-create_ddoc() ->
+verify_muliple_active_tasks({Db, DDoc}) ->
+    DDoc2 = create_ddoc(?INDEX_BAR, ?MAP_FUN2),
+    fabric2_db:update_doc(Db, DDoc2, []),
+    pause_indexer_for_changes(self()),
+    couch_views:build_indices(Db, [DDoc, DDoc2]),
+
+    {IndexerPid, {changes_done, ChangesDone}} = wait_to_reach_changes(10000),
+    {IndexerPid2, {changes_done, ChangesDone2}} = wait_to_reach_changes(10000),
+
+    ActiveTasks = fabric2_active_tasks:get_active_tasks(),
+
+    ?assertEqual(length(ActiveTasks), 2),
+
+    IndexerPid ! continue,
+    IndexerPid2 ! continue,
+
+    ?assertEqual(ChangesDone, ?TOTAL_DOCS),
+    ?assertEqual(ChangesDone2, ?TOTAL_DOCS).
+
+
+create_ddoc(DDocId, IndexName) ->
     couch_doc:from_json_obj({[
-        {<<"_id">>, <<"_design/bar">>},
+        {<<"_id">>, DDocId},
         {<<"views">>, {[
-            {?MAP_FUN1, {[
+            {IndexName, {[
                 {<<"map">>, <<"function(doc) {emit(doc.val, doc.val);}">>}
             ]}}
         ]}}
